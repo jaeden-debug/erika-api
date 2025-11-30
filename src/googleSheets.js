@@ -16,6 +16,10 @@ if (!GOOGLE_SHEET_ID) {
   throw new Error('GOOGLE_SHEET_ID is not set in .env');
 }
 
+if (!GOOGLE_REFRESH_TOKEN) {
+  console.warn('⚠ GOOGLE_REFRESH_TOKEN is not set. Sheets writes will fail.');
+}
+
 const oauth2Client = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,

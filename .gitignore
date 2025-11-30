@@ -63,3 +63,4 @@ node_modules 2/
 .env.*
 .env.local.env
 credentials.json
+.env*.local

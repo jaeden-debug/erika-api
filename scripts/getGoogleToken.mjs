@@ -1,3 +1,4 @@
+// scripts/getGoogleToken.mjs
 import http from 'http';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
