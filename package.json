@@ -1,26 +1,23 @@
 {
   "name": "erika-api",
   "version": "1.0.0",
-  "description": "Backend for Just Erika newsletter + automations",
+  "description": "Minimal API for Erika subscribers",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "prepare": "husky install"
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.2.1",
-    "helmet": "^8.1.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "googleapis": "^144.0.0",
     "postmark": "^4.0.5"
   },
   "devDependencies": {
-    "husky": "^9.1.7",
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.11"
   }
 }

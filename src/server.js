@@ -1,85 +1,102 @@
 // src/server.js
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import { ServerClient } from "postmark";
-import dotenv from "dotenv";
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { ServerClient } from 'postmark';
+import { appendSubscriber } from './googleSheets.js';
 
-dotenv.config();
+dotenv.config({ path: '.env' });
+
+const {
+  PORT = 8080,
+  POSTMARK_SERVER_TOKEN,
+  ERIKA_SUBSCRIBE_TO,
+  ERIKA_SUBSCRIBE_FROM,
+} = process.env;
+
+if (!POSTMARK_SERVER_TOKEN) {
+  console.warn('⚠ POSTMARK_SERVER_TOKEN not set. Emails will fail.');
+}
+if (!ERIKA_SUBSCRIBE_FROM) {
+  console.warn('⚠ ERIKA_SUBSCRIBE_FROM not set.');
+}
 
 const app = express();
+const postmarkClient = new ServerClient(POSTMARK_SERVER_TOKEN || '');
 
-// trust proxy (for when you run behind Vercel / Render / etc)
-app.set("trust proxy", 1);
-
-// 🔐 Security headers
-app.use(
-  helmet({
-    contentSecurityPolicy: false, // safe to disable for simple API
-  })
-);
-
-// 🌍 CORS — lock this down to your real domains
-app.use(
-  cors({
-    origin: [
-      "https://justerika.com",
-      "https://www.justerika.com",
-      "https://admin.blackwateraquatics.ca",
-      // add/remove domains as needed
-    ],
-    methods: ["POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
-
-// 🔒 Rate limiting for this endpoint
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,                  // 50 requests per IP per window
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Body parsers
-app.use(express.urlencoded({ extended: true }));
+// basic hardening
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 
-// Postmark client
-const client = new ServerClient(process.env.POSTMARK_SERVER_TOKEN);
+app.use(
+  '/subscribe',
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+  })
+);
 
-// Apply limiter only to this route
-app.post("/erikaAPI", limiter, async (req, res) => {
+// Health check
+app.get('/', (req, res) => {
+  res.json({ ok: true, service: 'ErikaAPI', time: new Date().toISOString() });
+});
+
+// Main endpoint: called by MyFreeCams form
+app.post('/subscribe', async (req, res) => {
   try {
-    const email = (req.body.email || "").trim();
-    const source = (req.body.source || "unknown_source").slice(0, 100);
-    const tag = (req.body.tag || "Intimate Drops").slice(0, 100);
+    const { email, source = 'myfreecams', tag = '' } = req.body || {};
 
-    console.log("📨 Received signup:", { email, source, tag });
-
-    // basic validation
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      return res.status(400).json({ error: "Valid email is required" });
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email is required.' });
     }
 
-    await client.sendEmail({
-      From: process.env.FROM_EMAIL,
-      To: process.env.TO_EMAIL,
-      Subject: `New Subscriber: ${email}`,
-      TextBody: `Source: ${source}\nTag: ${tag}\nEmail: ${email}`,
-      MessageStream: "outbound",
-    });
+    // 1. Log to Google Sheet
+    const row = await appendSubscriber({ email, source, tag });
 
-    return res.json({ success: true, message: "Subscriber stored" });
+    // 2. Welcome email to subscriber
+    if (POSTMARK_SERVER_TOKEN && ERIKA_SUBSCRIBE_FROM) {
+      await postmarkClient.sendEmail({
+        From: ERIKA_SUBSCRIBE_FROM,
+        To: email,
+        Subject: 'Welcome to Just Erika 💋',
+        TextBody:
+          'Thanks for subscribing to Erika. Watch your inbox for drops and offers. 💋',
+        HtmlBody: `
+          <html>
+            <body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#050509; color:#f5f5f5;">
+              <h2>Welcome to Just Erika 💋</h2>
+              <p>Thanks for subscribing. You’ll get exclusive updates, drops, and offers.</p>
+              <p>
+                Shop + links:<br />
+                <a href="https://justerika.com" style="color:#f38ecb" target="_blank">https://justerika.com</a>
+              </p>
+            </body>
+          </html>
+        `,
+        MessageStream: 'outbound',
+      });
+    }
+
+    // 3. Notify you
+    if (POSTMARK_SERVER_TOKEN && ERIKA_SUBSCRIBE_TO && ERIKA_SUBSCRIBE_FROM) {
+      await postmarkClient.sendEmail({
+        From: ERIKA_SUBSCRIBE_FROM,
+        To: ERIKA_SUBSCRIBE_TO,
+        Subject: `New Erika subscriber: ${email}`,
+        TextBody: `New subscriber.\n\nEmail: ${email}\nSource: ${source}\nTag: ${tag}\nTime: ${row.timestamp}`,
+      });
+    }
+
+    return res.status(200).json({ ok: true, email });
   } catch (err) {
-    console.error("Error:", err);
-    // don’t leak internals to client
-    return res.status(500).json({ error: "Server error" });
+    console.error('Error in /subscribe:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`🚀 Erika API running on port ${PORT}`);
+  console.log(`🚀 ErikaAPI listening on http://localhost:${PORT}`);
 });
