@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+echo '🔥 Husky pre-commit hook running!'
