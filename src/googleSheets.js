@@ -9,7 +9,7 @@ const {
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
   GOOGLE_REFRESH_TOKEN,
-  GOOGLE_SHEET_ID,
+  GOOGLE_SHEET_ID, // Erika's sheet
 } = process.env;
 
 if (!GOOGLE_SHEET_ID) {
@@ -32,18 +32,45 @@ oauth2Client.setCredentials({
 
 const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
 
-export async function appendSubscriber({ email, source = 'myfreecams', tag = '' }) {
+/**
+ * Generic helper: append a subscriber row to any sheet ID.
+ * This lets us support multiple brands (Erika, StillAwake, etc).
+ */
+export async function appendSubscriberToSheet({
+  email,
+  source = 'myfreecams',
+  tag = '',
+  sheetId,
+}) {
+  if (!sheetId) {
+    throw new Error('sheetId is required for appendSubscriberToSheet');
+  }
+
   const now = new Date();
   const timestamp = now.toISOString();
 
+  // [Email, Source, Tag, Timestamp]
   const values = [[email, source, tag, timestamp]];
 
   await sheets.spreadsheets.values.append({
-    spreadsheetId: GOOGLE_SHEET_ID,
+    spreadsheetId: sheetId,
     range: 'Sheet1!A:D', // Email, Source, Tag, Timestamp
     valueInputOption: 'USER_ENTERED',
     requestBody: { values },
   });
 
   return { email, source, tag, timestamp };
+}
+
+/**
+ * Backwards-compatible helper for Erika.
+ * Uses the original GOOGLE_SHEET_ID so existing Erika flows do not change.
+ */
+export async function appendSubscriber({ email, source = 'myfreecams', tag = '' }) {
+  return appendSubscriberToSheet({
+    email,
+    source,
+    tag,
+    sheetId: GOOGLE_SHEET_ID,
+  });
 }
