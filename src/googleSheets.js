@@ -12,12 +12,12 @@ const {
   GOOGLE_SHEET_ID, // Erika's sheet
 } = process.env;
 
-if (!GOOGLE_SHEET_ID) {
-  throw new Error('GOOGLE_SHEET_ID is not set in .env');
-}
-
 if (!GOOGLE_REFRESH_TOKEN) {
   console.warn('⚠ GOOGLE_REFRESH_TOKEN is not set. Sheets writes will fail.');
+}
+
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+  console.warn('⚠ Google OAuth client info is incomplete. Check GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI.');
 }
 
 const oauth2Client = new google.auth.OAuth2(
@@ -67,6 +67,10 @@ export async function appendSubscriberToSheet({
  * Uses the original GOOGLE_SHEET_ID so existing Erika flows do not change.
  */
 export async function appendSubscriber({ email, source = 'myfreecams', tag = '' }) {
+  if (!GOOGLE_SHEET_ID) {
+    throw new Error('GOOGLE_SHEET_ID is not set in environment (Erika sheet)');
+  }
+
   return appendSubscriberToSheet({
     email,
     source,

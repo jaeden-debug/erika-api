@@ -65,7 +65,7 @@ if (!STILLAWAKE_NOTIFY_TEMPLATE_ID) {
 const app = express();
 const postmarkClient = new ServerClient(POSTMARK_SERVER_TOKEN || '');
 
-// 🔹 helper to get client IP (works behind proxies too)
+// helper to get client IP (works behind proxies too)
 function getClientIp(req) {
   const xf = req.headers['x-forwarded-for'];
   if (typeof xf === 'string' && xf.length > 0) {
@@ -74,7 +74,7 @@ function getClientIp(req) {
   return req.ip || req.connection?.remoteAddress || '';
 }
 
-// 🔹 helper to pull an email from whatever the form sends
+// helper to pull an email from whatever the form sends
 function extractEmail(body = {}) {
   if (!body) return '';
 
@@ -83,7 +83,6 @@ function extractEmail(body = {}) {
   if (typeof body.emailAddress === 'string') return body.emailAddress;
   if (typeof body['email_address'] === 'string') return body['email_address'];
 
-  // last resort: first string that looks like an email
   for (const value of Object.values(body)) {
     if (typeof value === 'string' && value.includes('@')) {
       return value;
