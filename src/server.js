@@ -63,6 +63,8 @@ if (!STILLAWAKE_NOTIFY_TEMPLATE_ID) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // ✅ required for express-rate-limit behind a proxy (Vercel, etc.)
+
 const postmarkClient = new ServerClient(POSTMARK_SERVER_TOKEN || '');
 
 // helper to get client IP (works behind proxies too)
@@ -106,6 +108,8 @@ app.use(
   rateLimit({
     windowMs: 60 * 1000,
     max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
   })
 );
 
