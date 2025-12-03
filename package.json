@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "build": "echo \"No build step required for erika-api (pure Node/Express server)\"",
     "get-google-token": "node scripts/getGoogleToken.mjs"
   },
   "dependencies": {
