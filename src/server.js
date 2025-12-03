@@ -1,7 +1,7 @@
 // src/server.js
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
+// import helmet from 'helmet'; // removed for now
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { ServerClient } from 'postmark';
@@ -40,27 +40,39 @@ if (!ERIKA_SUBSCRIBE_TO) {
   console.warn('⚠ ERIKA_SUBSCRIBE_TO not set (owner notification email).');
 }
 if (!POSTMARK_WELCOME_TEMPLATE_ID) {
-  console.warn('⚠ POSTMARK_WELCOME_TEMPLATE_ID not set. Erika welcome email will fall back to basic text.');
+  console.warn(
+    '⚠ POSTMARK_WELCOME_TEMPLATE_ID not set. Erika welcome email will fall back to basic text.'
+  );
 }
 if (!POSTMARK_NOTIFY_TEMPLATE_ID) {
-  console.warn('⚠ POSTMARK_NOTIFY_TEMPLATE_ID not set. Erika owner notification will fall back to basic text.');
+  console.warn(
+    '⚠ POSTMARK_NOTIFY_TEMPLATE_ID not set. Erika owner notification will fall back to basic text.'
+  );
 }
 
 /** StillAwake warnings **/
 if (!STILLAWAKE_SHEET_ID) {
-  console.warn('⚠ STILLAWAKE_SHEET_ID not set. StillAwake subscriptions will fail to write to Sheets.');
+  console.warn(
+    '⚠ STILLAWAKE_SHEET_ID not set. StillAwake subscriptions will fail to write to Sheets.'
+  );
 }
 if (!STILLAWAKE_SUBSCRIBE_FROM) {
   console.warn('⚠ STILLAWAKE_SUBSCRIBE_FROM not set.');
 }
 if (!STILLAWAKE_SUBSCRIBE_TO) {
-  console.warn('⚠ STILLAWAKE_SUBSCRIBE_TO not set (StillAwake owner notification email).');
+  console.warn(
+    '⚠ STILLAWAKE_SUBSCRIBE_TO not set (StillAwake owner notification email).'
+  );
 }
 if (!STILLAWAKE_WELCOME_TEMPLATE_ID) {
-  console.warn('⚠ STILLAWAKE_WELCOME_TEMPLATE_ID not set. StillAwake welcome email will fall back to basic text.');
+  console.warn(
+    '⚠ STILLAWAKE_WELCOME_TEMPLATE_ID not set. StillAwake welcome email will fall back to basic text.'
+  );
 }
 if (!STILLAWAKE_NOTIFY_TEMPLATE_ID) {
-  console.warn('⚠ STILLAWAKE_NOTIFY_TEMPLATE_ID not set. StillAwake owner notification will fall back to basic text.');
+  console.warn(
+    '⚠ STILLAWAKE_NOTIFY_TEMPLATE_ID not set. StillAwake owner notification will fall back to basic text.'
+  );
 }
 
 const app = express();
@@ -95,8 +107,7 @@ function extractEmail(body = {}) {
   return '';
 }
 
-// security + body parsing
-app.use(helmet());
+// ---- security + body parsing (CSP fully removed) ----
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -112,7 +123,7 @@ app.use(
   })
 );
 
-// === Erika landing page HTML ===
+// === Erika landing page HTML (bg image + glass card) ===
 const ERIKA_LANDING_HTML = `<!doctype html>
 <html lang="en">
 <head>
@@ -120,32 +131,81 @@ const ERIKA_LANDING_HTML = `<!doctype html>
   <title>Just Erika — Intimate Drops</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
     body {
       min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1a1016, #050509 55%, #000 100%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "SF Pro Text", "Segoe UI", sans-serif;
       color: #f7f2f8;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      position: relative;
+      overflow: hidden;
+      background-color: #000; /* fallback if image fails */
     }
+
+    /* Background image container (non-clickable) */
+    .bg {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 0;
+      cursor: default;
+      overflow: hidden;
+    }
+
+    .bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* fill viewport on all devices */
+      display: block;
+      pointer-events: none; /* extra safety so it never catches clicks */
+    }
+
+    /* Darken the image slightly */
+    .bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
+
     .page {
       width: 100%;
-      max-width: 480px;
-      border-radius: 24px;
-      padding: 24px 20px 20px;
-      background:
-        radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 55%),
-        rgba(7, 7, 9, 0.96);
+      max-width: 520px;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card {
+      width: 100%;
+      border-radius: 26px;
+      padding: 24px 20px 18px;
+      background: rgba(0, 0, 0, 0.55); /* glass, see-through */
       box-shadow:
-        0 0 0 1px rgba(255,255,255,0.06),
-        0 24px 60px rgba(0,0,0,0.95),
-        0 0 32px rgba(255,46,159,0.55);
+        0 0 0 1px rgba(255,255,255,0.05),
+        0 18px 50px rgba(0,0,0,0.9),
+        0 0 30px rgba(255,46,159,0.55);
       backdrop-filter: blur(18px);
     }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -156,58 +216,119 @@ const ERIKA_LANDING_HTML = `<!doctype html>
       text-transform: uppercase;
       letter-spacing: 0.22em;
       color: #ffc0ea;
-      border: 1px solid rgba(255,192,234,0.8);
+      border: 1px solid rgba(255,192,234,0.9);
       background:
         radial-gradient(circle at 0% 0%, rgba(255,192,234,0.45), transparent 60%),
-        rgba(15,15,15,0.96);
+        rgba(16,16,18,0.96);
       margin-bottom: 10px;
     }
+
     h1 {
       font-size: 26px;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
+
     h1 span {
       color: #ff2e9f;
     }
+
     .tagline {
       font-size: 14px;
-      color: rgba(255,255,255,0.85);
-      margin-bottom: 18px;
+      color: rgba(255,255,255,0.88);
+      margin-bottom: 8px;
     }
+
     .copy {
-      font-size: 13px;
-      line-height: 1.6;
+      font-size: 11px;
+      line-height: 1.4;
       color: rgba(255,255,255,0.84);
       margin-bottom: 18px;
     }
+
     form {
-      margin-top: 8px;
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
     }
-    .field-wrap {
-      flex: 1 1 220px;
-      min-width: 0;
+
+    .field-label {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 4px;
     }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    input[type="text"],
     input[type="email"] {
       width: 100%;
       padding: 9px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.22);
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.78);
       color: #fff;
       font-size: 13px;
       outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease,
+        background 0.18s ease, transform 0.1s ease;
     }
+
+    input[type="text"]::placeholder,
     input[type="email"]::placeholder {
       color: rgba(255,255,255,0.5);
     }
-    button {
-      flex: 0 0 auto;
-      padding: 9px 18px;
+
+    input[type="text"]:focus,
+    input[type="email"]:focus {
+      border-color: rgba(255,46,159,0.8);
+      box-shadow:
+        0 0 0 1px rgba(255,46,159,0.7),
+        0 0 22px rgba(255,46,159,0.65);
+      background: rgba(0,0,0,0.9);
+      transform: translateY(-0.5px);
+    }
+
+    .consent-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .consent-row input[type="checkbox"] {
+      margin-top: 2px;
+      accent-color: #ff2e9f;
+      flex-shrink: 0;
+    }
+
+    .consent-row strong {
+      font-weight: 600;
+      color: #ffc0ea;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 22px;
       border-radius: 999px;
       border: none;
       font-size: 11px;
@@ -224,137 +345,290 @@ const ERIKA_LANDING_HTML = `<!doctype html>
       color: #111;
       box-shadow:
         0 0 0 1px rgba(255,255,255,0.9),
-        0 8px 18px rgba(0,0,0,0.9),
-        0 0 24px rgba(255,46,159,0.6);
+        0 10px 22px rgba(0,0,0,0.9),
+        0 0 26px rgba(255,46,159,0.6);
       white-space: nowrap;
+      transition:
+        transform 0.12s ease,
+        box-shadow 0.12s ease,
+        background 0.2s ease,
+        color 0.2s ease;
     }
-    button[disabled] {
-      opacity: 0.7;
+
+    .btn:hover:not(.is-loading):not(.is-success) {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,1),
+        0 16px 30px rgba(0,0,0,0.95),
+        0 0 32px rgba(255,46,159,0.7);
+    }
+
+    .btn:active:not(.is-loading):not(.is-success) {
+      transform: translateY(0);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.9),
+        0 8px 18px rgba(0,0,0,0.9),
+        0 0 22px rgba(255,46,159,0.6);
+    }
+
+    .btn[disabled] {
       cursor: default;
+      opacity: 0.85;
     }
-    .status {
-      margin-top: 10px;
-      font-size: 12px;
-      min-height: 1.2em;
+
+    .btn-content {
+      position: relative;
+      z-index: 1;
     }
-    .status.ok {
-      color: #7fffb7;
+
+    /* Loader hidden at start */
+    .btn-loader {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 0 auto;
+      pointer-events: none;
     }
-    .status.err {
-      color: #ffb3c6;
+
+    /* Loading State */
+    .btn.is-loading .btn-content {
+      display: none;
     }
-    .footer {
-      margin-top: 18px;
+
+    .btn.is-loading .btn-loader {
+      display: inline-block;
+    }
+
+    /* Success State */
+    .btn.is-success {
+      background: radial-gradient(circle at top, #ff2e9f, #ff5ab8 45%, #fdf2ff 120%);
+      color: #12030b;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.95),
+        0 20px 40px rgba(0,0,0,0.95),
+        0 0 42px rgba(255,46,159,0.95);
+      transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .helper {
       font-size: 11px;
-      opacity: 0.7;
+      margin-top: 4px;
+      min-height: 1.4em;
+      color: rgba(255,255,255,0.75);
+      transition: color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .helper.helper-ok {
+      color: #9bffd0;
+      transform: translateY(-1px);
+    }
+
+    .helper.helper-err {
+      color: #ffb3c6;
+      transform: translateY(-1px);
+    }
+
+    .footer {
+      margin-top: 16px;
+      font-size: 11px;
+      opacity: 0.72;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 8px;
       flex-wrap: wrap;
     }
-    .footer a {
-      color: #ffc0ea;
-      text-decoration: none;
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-    @media (max-width: 480px) {
-      .page { padding: 20px 16px 18px; }
-      h1 { font-size: 22px; }
-      .tagline { font-size: 13px; }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 16px;
+      }
+      .card {
+        padding: 22px 16px 18px;
+        border-radius: 22px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      .tagline {
+        font-size: 13px;
+      }
+      .button-row {
+        justify-content: flex-start;
+      }
     }
   </style>
 </head>
 <body>
+  <!-- Background image -->
+  <div class="bg" id="erika-bg">
+    <img
+      src="https://i.imgur.com/lqk625X.jpg"
+      alt="Just Erika background"
+    />
+  </div>
+
   <main class="page">
-    <div class="badge">INTIMATE DROPS</div>
-    <h1>JUST_<span>ERIKA</span></h1>
-    <p class="tagline">
-      your sweet girl next door with a mouth made for mischief
-    </p>
-    <p class="copy">
-      Drop your email to join my private newsletter. I’ll only tap your inbox
-      when I go live, drop new sets, or have something worth losing sleep over.
-      No spam — just soft, filthy little alerts when a new piece of me goes live.
-    </p>
+    <section class="card" aria-label="Just Erika intimate newsletter signup">
+      <div class="badge">INTIMATE DROPS</div>
+      <h1>JUST_<span>ERIKA</span></h1>
+      <p class="tagline">
+        your sweet girl next door with a mouth made for mischief
+      </p>
+      <p class="copy">
+        Drop your details to join my private newsletter. I only touch your inbox
+        when something actually matters — live alerts, new sets, and the kind of
+        drops that keep you up a little too late.
+      </p>
 
-    <form id="erika-form" method="post" action="/subscribe">
-      <div class="field-wrap">
-        <input
-          type="email"
-          name="email"
-          placeholder="Your email for intimate alerts"
-          required
-        />
+      <form id="erika-form" method="post" action="/subscribe" novalidate>
+        <div class="field-group">
+          <div class="field-label">FIRST NAME*</div>
+          <input
+            type="text"
+            name="first_name"
+            autocomplete="given-name"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">EMAIL ADDRESS*</div>
+          <input
+            type="email"
+            name="email"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="consent-row">
+          <input
+            id="erika-consent"
+            type="checkbox"
+            name="is_adult"
+            value="true"
+            required
+          />
+          <label for="erika-consent">
+            <strong>18+ only.</strong> I confirm I'm an adult and comfortable
+            receiving suggestive, sensitive content in my inbox.
+          </label>
+        </div>
+
+        <!-- Hidden meta fields for your backend -->
+        <input type="hidden" name="source" value="erika_landing" />
+        <input type="hidden" name="tag" value="Intimate Drops" />
+
+        <div class="button-row">
+          <button type="submit" id="erika-submit" class="btn">
+            <span class="btn-content">Subscribe</span>
+            <span class="btn-loader" aria-hidden="true"></span>
+          </button>
+        </div>
+      </form>
+
+      <div id="erika-helper" class="helper">
+        Slide your email in — I only tease your inbox when it’s worth opening.
       </div>
-      <input type="hidden" name="source" value="erika_landing" />
-      <input type="hidden" name="tag" value="Intimate Drops" />
-      <button type="submit" id="erika-submit">Subscribe</button>
-    </form>
 
-    <div class="status" id="erika-status"></div>
-
-    <div class="footer">
-      <span>Powered by StillAwake Media</span>
-      <a href="https://stillawakemedia.com" target="_blank" rel="noopener noreferrer">
-        Visit StillAwake
-      </a>
-    </div>
+      <div class="footer">
+        <span>Powered by StillAwake Media</span>
+      </div>
+    </section>
   </main>
 
   <script>
     (function () {
       var form = document.getElementById("erika-form");
-      var submitBtn = document.getElementById("erika-submit");
-      var statusEl = document.getElementById("erika-status");
+      var btn = document.getElementById("erika-submit");
+      var helper = document.getElementById("erika-helper");
+      if (!form || !btn || !helper) return;
 
-      if (!form || !submitBtn || !statusEl) return;
+      var labelSpan = btn.querySelector(".btn-content");
+
+      function setHelper(text, kind) {
+        helper.textContent = text;
+        helper.className = "helper" + (kind ? " helper-" + kind : "");
+      }
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
 
-        var formData = new FormData(form);
-        var email = formData.get("email");
+        var data = new FormData(form);
+        var first = (data.get("first_name") || "").toString().trim();
+        var email = (data.get("email") || "").toString().trim();
+        var isAdult = document.getElementById("erika-consent").checked;
 
-        if (!email) {
-          statusEl.textContent = "Please add your email.";
-          statusEl.className = "status err";
+        if (!first) {
+          setHelper(
+            "Tell me your name first — I like to know who I’m teasing.",
+            "err"
+          );
+          return;
+        }
+        if (!email || !email.includes("@")) {
+          setHelper("Drop a valid email so I know where to whisper.", "err");
+          return;
+        }
+        if (!isAdult) {
+          setHelper(
+            "You’ll need to be 18+ to get these kinds of midnight messages.",
+            "err"
+          );
           return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Sending...";
-        statusEl.textContent = "";
-        statusEl.className = "status";
+        btn.disabled = true;
+        btn.classList.add("is-loading");
+        labelSpan.textContent = "Sending...";
+        setHelper("", "");
 
         var body = new URLSearchParams();
-        formData.forEach(function (value, key) {
+        data.forEach(function (value, key) {
           body.append(key, value);
         });
 
         fetch(form.action, {
           method: "POST",
           headers: {
-            "Accept": "application/json",
+            Accept: "application/json",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
           },
           body: body.toString()
         })
           .then(function (res) {
             if (!res.ok) throw new Error("Bad response");
-            return res.json().catch(function () { return {}; });
+            return res.json().catch(function () {
+              return {};
+            });
           })
           .then(function () {
-            submitBtn.textContent = "Subscribed";
-            statusEl.textContent = "You’re in. Check your inbox in a minute.";
-            statusEl.className = "status ok";
+            btn.classList.remove("is-loading");
+            btn.classList.add("is-success");
+            labelSpan.textContent = "Subscribed!";
+            setHelper(
+              "You’re in. Check your inbox for a private link I don’t share anywhere else.",
+              "ok"
+            );
           })
           .catch(function () {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Try again";
-            statusEl.textContent = "Something went wrong. Please try again.";
-            statusEl.className = "status err";
+            btn.disabled = false;
+            btn.classList.remove("is-loading");
+            labelSpan.textContent = "Try again";
+            setHelper(
+              "Something glitched. Nudge it again and I’ll behave on the second try.",
+              "err"
+            );
           });
       });
     })();
@@ -383,7 +657,15 @@ app.get('/', (req, res) => {
  */
 app.post('/subscribe', async (req, res) => {
   try {
-    const { email, source = 'myfreecams', tag = '' } = req.body || {};
+    const {
+      email,
+      first_name,
+      last_name,
+      is_adult,
+      source = 'erika_landing',
+      tag = 'Intimate Drops'
+    } = req.body || {};
+
     const signupIp = getClientIp(req);
 
     console.log('📨 [Erika] Incoming payload:', req.body, 'ip=', signupIp);
@@ -404,6 +686,9 @@ app.post('/subscribe', async (req, res) => {
       try {
         const welcomeModel = {
           email,
+          first_name,
+          last_name,
+          is_adult,
           source,
           tag,
           timestamp: signupTimestamp,
@@ -430,12 +715,12 @@ app.post('/subscribe', async (req, res) => {
             To: email,
             Subject: 'Welcome to Just Erika 💋',
             TextBody:
-              'Thanks for subscribing to Erika. Watch your inbox for drops and offers. 💋',
+              'Thanks for subscribing to Erika. Watch your inbox for drops and invites I don’t post anywhere else. 💋',
             HtmlBody: `
               <html>
                 <body style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#050509; color:#f5f5f5;">
                   <h2>Welcome to Just Erika 💋</h2>
-                  <p>Thanks for subscribing. You’ll get exclusive updates, drops, and offers.</p>
+                  <p>Thanks for subscribing. You’ll get exclusive updates, drops, and private invites.</p>
                   <p>
                     Links &amp; more:<br />
                     <a href="https://justerika.com" style="color:#f38ecb" target="_blank">https://justerika.com</a>
@@ -451,7 +736,9 @@ app.post('/subscribe', async (req, res) => {
         console.error('❌ [Erika] Error sending welcome email:', emailErr);
       }
     } else {
-      console.warn('⚠ [Erika] Skipping welcome email – missing POSTMARK_SERVER_TOKEN or ERIKA_SUBSCRIBE_FROM');
+      console.warn(
+        '⚠ [Erika] Skipping welcome email – missing POSTMARK_SERVER_TOKEN or ERIKA_SUBSCRIBE_FROM'
+      );
     }
 
     // 3. Notify you (Erika admin notification)
@@ -459,6 +746,9 @@ app.post('/subscribe', async (req, res) => {
       try {
         const notifyModel = {
           email,
+          first_name,
+          last_name,
+          is_adult,
           source,
           tag,
           timestamp: signupTimestamp,
@@ -484,7 +774,13 @@ app.post('/subscribe', async (req, res) => {
             From: ERIKA_SUBSCRIBE_FROM,
             To: ERIKA_SUBSCRIBE_TO,
             Subject: `New Erika subscriber: ${email}`,
-            TextBody: `New subscriber.\n\nEmail: ${email}\nSource: ${source}\nTag: ${tag}\nTime: ${notifyModel.signup_timestamp}\nIP: ${notifyModel.signup_ip}`,
+            TextBody: `New subscriber.\n\nEmail: ${email}\nFirst name: ${
+              first_name || ''
+            }\nLast name: ${last_name || ''}\nAdult: ${
+              is_adult ? 'yes' : 'no'
+            }\nSource: ${source}\nTag: ${tag}\nTime: ${
+              notifyModel.signup_timestamp
+            }\nIP: ${notifyModel.signup_ip}`,
             MessageStream: 'outbound'
           });
           console.log('✉️ [Erika] Sent fallback owner notification email.');
@@ -493,7 +789,9 @@ app.post('/subscribe', async (req, res) => {
         console.error('❌ [Erika] Error sending owner notification email:', notifyErr);
       }
     } else {
-      console.warn('⚠ [Erika] Skipping owner notification – missing config (token/from/to)');
+      console.warn(
+        '⚠ [Erika] Skipping owner notification – missing config (token/from/to)'
+      );
     }
 
     return res.status(200).json({ ok: true, email });
@@ -516,7 +814,14 @@ app.post('/subscribe/stillawake', async (req, res) => {
 
     const signupIp = getClientIp(req);
 
-    console.log('📨 [StillAwake] Incoming payload:', rawBody, 'resolvedEmail=', email, 'ip=', signupIp);
+    console.log(
+      '📨 [StillAwake] Incoming payload:',
+      rawBody,
+      'resolvedEmail=',
+      email,
+      'ip=',
+      signupIp
+    );
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       console.warn('⚠ [StillAwake] Invalid or missing email, returning 400');
@@ -593,7 +898,9 @@ app.post('/subscribe/stillawake', async (req, res) => {
         console.error('❌ [StillAwake] Error sending welcome email:', emailErr);
       }
     } else {
-      console.warn('⚠ [StillAwake] Skipping welcome email – missing POSTMARK_SERVER_TOKEN or STILLAWAKE_SUBSCRIBE_FROM');
+      console.warn(
+        '⚠ [StillAwake] Skipping welcome email – missing POSTMARK_SERVER_TOKEN or STILLAWAKE_SUBSCRIBE_FROM'
+      );
     }
 
     // 3. Notify you (StillAwake admin notification)
@@ -632,10 +939,15 @@ app.post('/subscribe/stillawake', async (req, res) => {
           console.log('✉️ [StillAwake] Sent fallback owner notification email.');
         }
       } catch (notifyErr) {
-        console.error('❌ [StillAwake] Error sending owner notification email:', notifyErr);
+        console.error(
+          '❌ [StillAwake] Error sending owner notification email:',
+          notifyErr
+        );
       }
     } else {
-      console.warn('⚠ [StillAwake] Skipping owner notification – missing config (token/from/to)');
+      console.warn(
+        '⚠ [StillAwake] Skipping owner notification – missing config (token/from/to)'
+      );
     }
 
     return res.status(200).json({ ok: true, email });
