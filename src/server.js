@@ -723,7 +723,7 @@ app.post('/subscribe', async (req, res) => {
                   <p>Thanks for subscribing. You’ll get exclusive updates, drops, and private invites.</p>
                   <p>
                     Links &amp; more:<br />
-                    <a href="https://justerika.shop" style="color:#f38ecb" target="_blank">https://justerika.com</a>
+                    <a href="https://justerika.shop" style="color:#f38ecb" target="_blank">https://justerika.shop</a>
                   </p>
                 </body>
               </html>
